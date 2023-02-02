@@ -1,19 +1,26 @@
-# ts-map-babel-template
+# ossaa-pdf-table
 
-A template setup for:
-- TypeScript ( using [babel](https://github.com/babel/babel) )
-- import maps ( including [this polyfill](https://github.com/guybedford/es-module-shims) )
-- And also optionally [show-casing @roguecircuitry/htmless](https://github.com/RogueCircuitry/htmless)
+1. Given a HY-TEK Meet Manager event report PDF
 
-## Function
+2. Parses and formats it to an HTML table and/or CSV
+3. which can be pasted into a spread sheet directly
 
-Compile /src directory with:
-`npm run build`
-<br/>
-File copy is set up as well for:
-`src/index.ts` -> `./index.js`<br/>
-`src/index.html` -> `./index.html`
+## State
+Not finished yet, a bit more parsing to do, then some testing
 
-Output is in the same directory as package.json for sake of import maps
+## Screenshot
 
-I regularly use this for starting new projects of my own, and therefor it should stay somewhat up-to-date.
+![img](./example.png)
+
+## Implemented
+- Ported lexer.ts, scanner.ts, and parser.ts from [@repcomm/JSON.java](https://gist.github.com/RepComm/72ad653df238ebe67b7734e2188a39d8) gist as a starting point
+- Basic input/output side-by-side panels
+- PDF upload button
+- Swim meet specific parsing code
+  - Event #, gender, type
+  - Teams header
+
+## Dependencies
+[@bundled-es-modules/pdfjs-dist](https://npmjs.com/@bundled-es-modules/pdfjs-dist) - npm ES module of Mozilla's pdfjs, for parsing text from PDFs
+
+[@roguecircuitry/htmless](https://github.com/roguecircuitry/htmless) - my own HTML wrapper lib

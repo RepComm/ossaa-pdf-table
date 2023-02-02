@@ -24,6 +24,7 @@
     "@babel/core": "^7.14.0",
     "@babel/plugin-transform-typescript": "^7.10.5",
     "@babel/preset-env": "^7.14.1",
+    "pdfjs-dist": "^3.3.122",
     "typescript": "^4.7.4"
   },
   "scripts": {
@@ -32,6 +33,7 @@
     "publish": "npm publish --access public"
   },
   "dependencies": {
-    "@roguecircuitry/htmless": "https://github.com/RogueCircuitry/htmless"
+    "@bundled-es-modules/pdfjs-dist": "^2.16.105-alpha.2",
+    "@roguecircuitry/htmless": "github:RogueCircuitry/htmless"
   }
 }
