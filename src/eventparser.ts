@@ -9,6 +9,8 @@ export interface Member {
 
 export interface Team {
   name: string;
+  index: string;
+  seedTime: string;
   members: Array<Member>;
 }
 
@@ -17,6 +19,7 @@ export interface Event {
   teams: Array<Team>;
   gender: string;
   type: string;
+  distance: string;
 }
 
 export interface EventParserResult {
@@ -30,9 +33,9 @@ export class EventParser {
   constructor() {
   }
 
-  read(): Token {
-    if (this.offset > this.tokens.length) throw `Cannot read, offset ${this.offset} > tokens.length ${this.tokens.length}`;
-    return this.tokens[this.offset];
+  read(future: number = 0): Token {
+    if (this.offset + future > this.tokens.length) throw `Cannot read, offset ${this.offset} > tokens.length ${this.tokens.length}`;
+    return this.tokens[this.offset + future];
   }
 
   next(): void {
@@ -66,7 +69,7 @@ export class EventParser {
 
         
         if (this.read().is("...")) {
-          console.log("Continuation of", results[results.length-1]);
+          // console.log("Continuation of", results[results.length-1]);
           this.next();
 
           if (this.read().is("(")) {
@@ -88,11 +91,100 @@ export class EventParser {
             this.next();
           }
 
+          if (this.read().is(")")) {
+            this.next();
+          }
+          
+          //Freestyle (but not Freestyle Relay)
+          if (type.endsWith("Freestyle") && this.read().is("Name")) {
+            this.next(); //Name
+            this.next(); //Year
+            this.next(); //School
+            this.next(); //Seed
+            this.next(); //Time
+          } else if (this.read().is("Team")) {
+            this.next(); //Team
+            this.next(); //Relay
+            this.next(); //Seed
+            this.next(); //Time
+          }
+
+          let teams = new Array<Team>;
+
+          while (this.hasNext && !this.read().is("Event")) {
+            let index = this.read().toString();
+            this.next();
+
+            let name = "";
+            for (let i=0; i<10; i++) {
+              if (this.read().is("A")) break;
+              name += this.read().toString() + " ";
+              this.next();
+            }
+
+            this.next(); //A
+
+            let seedTime = "";
+            seedTime += this.read().toString(); //#
+            seedTime += this.read().toString(); //:
+            seedTime += this.read().toString(); //#
+            seedTime += this.read().toString(); //:
+            seedTime += this.read().toString(); //#
+
+            while (this.hasNext && (
+              !this.read().is(TokenType.NUMBER) &&
+              !this.read(1).is(")")
+            )) {
+              this.next();
+            }
+
+            let members = new Array<Member>();
+
+            while (
+              this.hasNext && (
+                this.read().is(TokenType.NUMBER) &&
+                this.read(1).is(")")
+              )
+            ) {
+              this.next();
+              this.next();
+              
+              let member: Member = {
+                name: "",
+                index: 0,
+                seedTime: 0
+              };
+
+              while (
+                this.hasNext && (
+                  !this.read().is(TokenType.NUMBER) &&
+                  !this.read(1).is(")")
+                )
+              ) {
+                // console.log(this.read().toString());
+                member.name += this.read().toString() + " ";
+
+                this.next();
+              }
+
+              members.push(member);
+              console.log(members);
+            }
+
+            teams.push({
+              seedTime,
+              name,
+              index,
+              members
+            });
+          }
+
           results.push({
             index,
             gender,
+            distance,
             type,
-            teams: []
+            teams
           });
         }
 
@@ -100,15 +192,7 @@ export class EventParser {
         if (lastEvtOffset !== -1 && evtOffset !== -1) {
 
         }
-      } else if (this.read().is(TokenType.IDENTIFIER, "Team")) {
-        let school = "";
-        
-        results[results.length-1].teams.push({
-          name: school,
-          members: []
-        });
       }
-
       this.next();
       
 

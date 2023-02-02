@@ -127,6 +127,7 @@ async function main() {
 
       let eventTeams = ui.create("table").classes("teams-header").mount(eventContainer).e;
       let eventTeamsTop = ui.create("tr").mount(eventTeams).e;
+      ui.create("th").textContent("#").mount(eventTeamsTop);
       ui.create("th").textContent("Team").mount(eventTeamsTop);
       ui.create("th").textContent("Member").mount(eventTeamsTop);
       ui.create("th").textContent("Seed Time").mount(eventTeamsTop);
@@ -134,9 +135,10 @@ async function main() {
       for (let team of event.teams) {
         for (let member of team.members) {
           let row = ui.create("tr").mount(eventTeams).e;
+          ui.create("td").textContent(team.index).mount(row);
           ui.create("td").textContent(team.name).mount(row);
           ui.create("td").textContent(member.name).mount(row);
-          ui.create("td").textContent(`${member.seedTime}`).mount(row);
+          ui.create("td").textContent(`${team.seedTime}`).mount(row);
         }
       }
 
