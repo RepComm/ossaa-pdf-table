@@ -1,21 +1,11 @@
 import { exponent, UIBuilder } from "@roguecircuitry/htmless";
-import pdfjs from "@bundled-es-modules/pdfjs-dist";
 import { parse } from "./eventparser.js";
-pdfjs.GlobalWorkerOptions.workerSrc = "./node_modules/@bundled-es-modules/pdfjs-dist/build/pdf.worker.js";
-const getDocument = pdfjs.getDocument;
-async function pdfToText(src) {
-  let doc = await getDocument(src).promise;
-  console.log("Doc", doc, doc.numPages);
-  let result = "";
-  for (let i = 1; i < doc.numPages; i++) {
-    //apparently the pages start a 1, because why not
-    let page = await doc.getPage(i);
-    let textContent = "";
-    let texts = await page.getTextContent();
-    for (let text of texts.items) {
-      textContent += text.str + " ";
-    }
-    result += textContent;
+import { pdfToText } from "./pdf.js";
+function mapToObj(map) {
+  let result = {};
+  for (let [k, v] of map) {
+    //@ts-expect-error
+    result[k] = v;
   }
   return result;
 }
@@ -82,8 +72,9 @@ async function main() {
   ui.create("span").id("title").textContent("ossaa-pdf-table").mount(container);
   async function onInputLoaded(src) {
     contentInput.src = src;
-    let textContent = await pdfToText(src);
+    let textContent = await pdfToText(src, " PAGE_END_MARKER ");
     let result = parse(textContent);
+    console.log("Finished parsing", result);
     contentOutput.innerHTML = "";
     for (let event of result.events) {
       let eventContainer = ui.create("div").classes("event").mount(contentOutput).e;
@@ -112,10 +103,7 @@ async function main() {
         }
       }
     }
-
-    // contentOutput.textContent = textContent;
   }
-
   let upload = ui.create("input").id("upload").on("change", evt => {
     let reader = new FileReader();
     reader.readAsDataURL(upload.files[0]);

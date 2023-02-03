@@ -23,6 +23,10 @@ export class Token {
 
   }
 
+  static join (tokens: Token[], separator: string = " "): string {
+    return tokens.map((token)=>token.toString()).join(separator);
+  }
+
   is(t: TokenType): boolean;
   is(t: TokenType, exactly: string): boolean;
   is(exactly: string): boolean;

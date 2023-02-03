@@ -11,6 +11,9 @@ export let TokenType;
 })(TokenType || (TokenType = {}));
 export class Token {
   constructor() {}
+  static join(tokens, separator = " ") {
+    return tokens.map(token => token.toString()).join(separator);
+  }
   is(a, b) {
     if (typeof a === "string") {
       return this.toString() === a;

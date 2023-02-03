@@ -1,31 +1,17 @@
 
 import { exponent, UIBuilder } from "@roguecircuitry/htmless";
-import pdfjs from "@bundled-es-modules/pdfjs-dist";
-import type { TextItem } from "pdfjs-dist/types/src/display/api";
 import { parse } from "./eventparser.js";
+import { pdfToText } from "./pdf.js";
 
-pdfjs.GlobalWorkerOptions.workerSrc = "./node_modules/@bundled-es-modules/pdfjs-dist/build/pdf.worker.js";
-
-const getDocument: typeof import("pdfjs-dist/types/src/display/api").getDocument = pdfjs.getDocument;
-
-async function pdfToText(src: string) {
-  let doc = await getDocument(src).promise;
-
-  console.log("Doc", doc, doc.numPages);
-
-  let result = "";
-  for (let i = 1; i < doc.numPages; i++) { //apparently the pages start a 1, because why not
-    let page = await doc.getPage(i);
-
-    let textContent = "";
-
-    let texts = await page.getTextContent();
-    for (let text of texts.items) {
-      textContent += (text as TextItem).str + " ";
-    }
-    result += textContent;
+export interface mapToObjResult<B> {
+  [id: string]: B;
+}
+function mapToObj<A,B> (map: Map<A, B>): mapToObjResult<B> {
+  let result: mapToObjResult<B> = {};
+  for (let [k,v] of map) {
+    //@ts-expect-error
+    result[k] = v;
   }
-
   return result;
 }
 
@@ -104,12 +90,13 @@ async function main() {
   async function onInputLoaded(src: string) {
     contentInput.src = src;
 
-    let textContent = await pdfToText(src);
+    let textContent = await pdfToText(src, " PAGE_END_MARKER ");
 
     let result = parse(textContent);
 
-    contentOutput.innerHTML = "";
+    console.log("Finished parsing", result);
 
+    contentOutput.innerHTML = "";
 
     for (let event of result.events) {
       let eventContainer = ui.create("div").classes("event").mount(contentOutput).e;
@@ -143,9 +130,6 @@ async function main() {
       }
 
     }
-
-
-    // contentOutput.textContent = textContent;
   }
 
   let upload = ui.create("input")
