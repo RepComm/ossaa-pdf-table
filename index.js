@@ -73,6 +73,9 @@ async function main() {
   async function onInputLoaded(src) {
     contentInput.src = src;
     let textContent = await pdfToText(src, " PAGE_END_MARKER ");
+
+    // console.log(textContent);
+
     let result = parse(textContent);
     console.log("Finished parsing", result);
     contentOutput.innerHTML = "";

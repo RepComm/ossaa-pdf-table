@@ -26,6 +26,11 @@ export interface EventParserResult {
   events: Array<Event>;
 }
 
+export interface Bounds {
+  start: number;
+  end: number;
+}
+
 export class EventParser {
   tokens: Array<Token>;
 
@@ -69,8 +74,16 @@ export class EventParser {
     this.offset+=n;
   }
 
-  expected(v: string): void {
-    throw `Error at ${this.offset}, expected ${v}, got ${this.read().toString()}`;
+  expected(v: string, n: number = 1): void {
+    let min = Math.min(n, this.available());
+    let got: string;
+    if (min < 2) {
+      got = this.read().toString();
+    } else {
+      got = Token.join( this.read(min), " " );
+    }
+
+    throw `Error at ${this.offset}, expected ${v}, got ${got}`;
   }
 
   get hasNext (): boolean {
@@ -145,23 +158,43 @@ export class EventParser {
     }
   }
 
-  findEventDetails (event: Event, isContinuation: boolean = false) {
-    this.next(); //read 'Event'
+  expect (...compares: Array<string|TokenType>) {
+    let success = false;
+    try {
+      success = this.is(...compares);
+    } catch (ex) {
+      success = false;
+    }
+    if (!success) {
+      for (let i=0; i<compares.length; i++) {
+        if (typeof(compares[i]) !== "string") {
+          compares[i] = `TokenType[${compares[i]}]`;
+        }
+      }
+      this.expected( compares.join(","), compares.length );
+    } else {
+      this.next(compares.length);
+    }
+  }
 
-    event.index = this.read().toString(); this.next();
+  findEventDetails (event: Event, isContinuation: boolean = false) {
 
     event.gender = this.read().toString(); this.next();
 
     event.distance = this.read().toString(); this.next();
 
-    if (this.read().is("Yard")) this.next();
+    this.expect("Yard");
+    // if (this.read().is("Yard")) this.next();
 
     event.type = this.read().toString(); this.next();
-    if (this.is("Relay")) event.type += " " + this.read().toString(); this.next();
 
+    if (this.is("Relay")) {
+      event.type += " " + this.read().toString(); this.next();
+    }
     
     if (isContinuation) {
-      if (this.is(")")) this.next(); //closing event continuation marker
+      this.expect(")");
+      // if (this.is(")")) this.next(); //closing event continuation marker
       
       //non-continuation does not include headers, no need to skip them
     } else {
@@ -169,9 +202,9 @@ export class EventParser {
       //skip headers
       //Freestyle (but not Freestyle Relay)
       if (event.type.endsWith("Relay")) {
-        this.next(4); //Team, Relay, Seed, Time
+        this.expect("Team", "Relay", "Seed", "Time");
       } else {
-        this.next(5); //Name, Year, School, Seed, Time
+        this.expect("Name", "Year", "School", "Seed", "Time");
       }
     }
 
@@ -192,6 +225,9 @@ export class EventParser {
     let lastEvtOffset = -1;
     let evtOffset = -1;
 
+    let eventBounds = new Array<Bounds>();
+
+    //location bounds
     while (this.hasNext) {
       if (this.is("PAGE_END_MARKER")) {
         while (this.hasNext && !this.is("Event")) {
@@ -201,37 +237,43 @@ export class EventParser {
       if (this.hasNext && this.is("Event")) {
         lastEvtOffset = evtOffset;
         evtOffset = this.offset;
-
-        let event: Event;
-        
-        if (this.hasCount(2) && this.is("...", "(")) {
-          this.next(2);
-
-          event = results[results.length-1];
-          // console.log("Continuation of", results[results.length-1]);
-        } else {
-          event = {
-            index: undefined,
-            type: undefined,
-            distance: undefined,
-            gender: undefined,
-            teams: []
-          };
-
-          results.push(event);
-        }
-
-        if (lastEvtOffset !== -1 && evtOffset !== -1) {
-          this.push_scope(lastEvtOffset, evtOffset);
-          this.findEventDetails(event);
-          this.pop_scope();
-
-          // console.log("Event", Token.join( this.read(evtOffset - lastEvtOffset) ) );
-        }
+        if (lastEvtOffset !== -1) eventBounds.push({start: lastEvtOffset, end: evtOffset});
       }
       this.next();
-      
+    }
+    eventBounds.push({
+      start: lastEvtOffset, end: this.tokens.length-1
+    });
 
+    //process bounds separately
+    for (let {start, end} of eventBounds) {
+      this.push_scope(start, end);
+
+      this.expect("Event");
+      let index = this.read().toString(); this.next();
+
+      let event: Event;
+      let isContinuation = false;
+
+      if (this.is("...", "(")) {
+        isContinuation = true;
+        event = results[results.length-1];
+        this.next(2);
+      } else {
+        isContinuation = false;
+        event = {
+          index,
+          type: undefined,
+          distance: undefined,
+          gender: undefined,
+          teams: []
+        };
+        results.push(event);
+      }
+
+      this.findEventDetails(event, isContinuation);
+
+      this.pop_scope();
     }
 
     return results;
