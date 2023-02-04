@@ -79,7 +79,13 @@ export class EventParser {
     this.scopeStack.pop();
     this.scopeStack.pop();
   }
+  findTeamMember(member) {
+    this.expect(TokenType.NUMBER, ")");
+    if (this.hasNext) member.name = Token.join(this.read(this.available()));
+    this.next(this.available());
+  }
   findTeamDetails(event, team) {
+    let memberOffsets = new Array();
     if (event.isIndividual) {} else {
       team.index = this.read().toString();
       this.next();
@@ -91,40 +97,54 @@ export class EventParser {
         }
         let teamNameEnd = this.offset;
         let teamNameTokenCount = teamNameStart - teamNameEnd;
-        team.name = Token.join(this.tokens.slice(teamNameStart, teamNameEnd), " ");
+        let teamNameTokens = this.tokens.slice(teamNameStart, teamNameEnd);
+        if (teamNameTokens[teamNameTokens.length - 1].is("A")) teamNameTokens.pop();
+        team.name = Token.join(teamNameTokens, " ");
         this.read(teamNameTokenCount);
         console.log("Team Name", team.name);
-        //TODO - parse seedTime and Relay 'A' type
+        //TODO - parse Relay 'A' type
 
         team.seedTime = Token.join(this.read(5), "");
         this.next(5);
         break;
       }
-      while (this.hasCount(2) && this.is(TokenType.NUMBER, ")")) {
-        let index = this.read().toString();
-        this.next();
-        this.expect(")");
-        let member = {
-          index,
-          name: undefined
-        };
-        team.members.push(member);
-        let nameStart = this.offset;
-        while (true) {
-          if (!this.hasNext) return;
+      if (!this.hasNext) return;
+      while (this.hasNext) {
+        if (this.hasCount(2) && this.is(TokenType.NUMBER, ")")) {
+          memberOffsets.push(this.offset);
+          this.next(2);
+        } else {
           if (this.is(TokenType.NUMBER)) {
-            if (this.hasCount(2)) {
-              if (this.is(TokenType.NUMBER, ")")) {
-                member.name = Token.join(this.tokens.slice(nameStart, this.offset), " ");
-                this.next(this.offset - nameStart);
-                break;
-              } else {
-                return;
-              }
+            let bounds = new Array();
+            for (let i = 0; i < memberOffsets.length - 1; i++) {
+              let start = memberOffsets[i];
+              let end = this.offset;
+              if (i + 1 < memberOffsets.length) end = memberOffsets[i + 1];
+              bounds.push({
+                start,
+                end
+              });
             }
+            for (let {
+              start,
+              end
+            } of bounds) {
+              let member = {
+                index: undefined,
+                name: undefined
+              };
+              team.members.push(member);
+              this.push_scope(start, end);
+              this.findTeamMember(member);
+              this.pop_scope();
+            }
+            return;
+          } else {
+            this.next();
           }
         }
       }
+      console.log(memberOffsets);
     }
     while (this.hasNext) {
       this.next();

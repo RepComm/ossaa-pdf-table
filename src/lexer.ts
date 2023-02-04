@@ -23,8 +23,12 @@ export class Token {
 
   }
 
-  static join (tokens: Token[], separator: string = " "): string {
-    return tokens.map((token)=>token.toString()).join(separator);
+  static join (tokens: Token|Token[], separator: string = " "): string {
+    if (Array.isArray(tokens)) {
+      return tokens.map((token)=>token.toString()).join(separator);
+    } else {
+      return tokens.toString();
+    }
   }
 
   is(t: TokenType): boolean;

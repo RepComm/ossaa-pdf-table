@@ -12,7 +12,11 @@ export let TokenType;
 export class Token {
   constructor() {}
   static join(tokens, separator = " ") {
-    return tokens.map(token => token.toString()).join(separator);
+    if (Array.isArray(tokens)) {
+      return tokens.map(token => token.toString()).join(separator);
+    } else {
+      return tokens.toString();
+    }
   }
   is(a, b) {
     if (typeof a === "string") {
