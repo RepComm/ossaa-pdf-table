@@ -19,6 +19,8 @@ Not finished yet, a bit more parsing to do, then some testing
 - Swim meet specific parsing code
   - Event #, gender, type
   - Teams header
+  - Team #, name, member names, seed time
+
 
 ## Dependencies
 [@bundled-es-modules/pdfjs-dist](https://npmjs.com/@bundled-es-modules/pdfjs-dist) - npm ES module of Mozilla's pdfjs, for parsing text from PDFs
