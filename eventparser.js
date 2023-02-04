@@ -80,22 +80,51 @@ export class EventParser {
     this.scopeStack.pop();
   }
   findTeamDetails(event, team) {
-    if (event.type.endsWith("Relay")) {} else {
+    if (event.isIndividual) {} else {
       team.index = this.read().toString();
+      this.next();
       let teamNameStart = this.offset;
-      while (this.hasCount(2)) {
-        if (!this.is(TokenType.NUMBER, ")")) {
+      while (this.hasNext) {
+        if (!this.is(TokenType.NUMBER)) {
           this.next();
           continue;
         }
         let teamNameEnd = this.offset;
+        let teamNameTokenCount = teamNameStart - teamNameEnd;
         team.name = Token.join(this.tokens.slice(teamNameStart, teamNameEnd), " ");
+        this.read(teamNameTokenCount);
         console.log("Team Name", team.name);
         //TODO - parse seedTime and Relay 'A' type
-        // team.seedTime = Token.join( this.read(5), "" ); this.next(5);
+
+        team.seedTime = Token.join(this.read(5), "");
+        this.next(5);
         break;
       }
-      if (this.hasCount(20)) console.log("After Team Name: ", Token.join(this.read(20)));
+      while (this.hasCount(2) && this.is(TokenType.NUMBER, ")")) {
+        let index = this.read().toString();
+        this.next();
+        this.expect(")");
+        let member = {
+          index,
+          name: undefined
+        };
+        team.members.push(member);
+        let nameStart = this.offset;
+        while (true) {
+          if (!this.hasNext) return;
+          if (this.is(TokenType.NUMBER)) {
+            if (this.hasCount(2)) {
+              if (this.is(TokenType.NUMBER, ")")) {
+                member.name = Token.join(this.tokens.slice(nameStart, this.offset), " ");
+                this.next(this.offset - nameStart);
+                break;
+              } else {
+                return;
+              }
+            }
+          }
+        }
+      }
     }
     while (this.hasNext) {
       this.next();
@@ -139,12 +168,13 @@ export class EventParser {
 
       //non-continuation does not include headers, no need to skip them
     } else {
+      event.isIndividual = !this.is("Team");
       //skip headers
       //Freestyle (but not Freestyle Relay)
-      if (event.type.endsWith("Relay")) {
-        this.expect("Team", "Relay", "Seed", "Time");
-      } else {
+      if (event.isIndividual) {
         this.expect("Name", "Year", "School", "Seed", "Time");
+      } else {
+        this.expect("Team", "Relay", "Seed", "Time");
       }
     }
     while (this.hasNext) {
@@ -207,7 +237,8 @@ export class EventParser {
           type: undefined,
           distance: undefined,
           gender: undefined,
-          teams: []
+          teams: [],
+          isIndividual: undefined
         };
         results.push(event);
       }

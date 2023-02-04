@@ -3,20 +3,21 @@ import { Lexer, Token, TokenType } from "./lexer.js";
 
 export interface Member {
   name: string;
-  index: number;
-  seedTime: number;
+  index: string;
+  seedTime?: string;
 }
 
 export interface Team {
   name: string;
   index: string;
-  seedTime: string;
+  seedTime?: string;
   members: Array<Member>;
 }
 
 export interface Event {
   index: string;
   teams: Array<Team>;
+  isIndividual: boolean;
   gender: string;
   type: string;
   distance: string;
@@ -129,28 +130,64 @@ export class EventParser {
   }
 
   findTeamDetails (event: Event, team: Team) {
-    if (event.type.endsWith("Relay")) {
+    
+    if (event.isIndividual) {
       
     } else {
-      team.index = this.read().toString();
+      team.index = this.read().toString(); this.next();
+      
       let teamNameStart = this.offset;
 
-      while (this.hasCount(2)) {
-        if (!this.is(TokenType.NUMBER, ")")) {
+      while (this.hasNext) {
+        if (!this.is(TokenType.NUMBER)) {
           this.next(); continue;
         }
-        
         let teamNameEnd = this.offset;
         
+        let teamNameTokenCount = teamNameStart - teamNameEnd;
+
         team.name = Token.join( this.tokens.slice(teamNameStart, teamNameEnd), " ");
+
+        this.read(teamNameTokenCount);
+
         console.log("Team Name", team.name);
         //TODO - parse seedTime and Relay 'A' type
-        // team.seedTime = Token.join( this.read(5), "" ); this.next(5);
+
+        team.seedTime = Token.join( this.read(5), "" ); this.next(5);
         break;
       }
 
-      if (this.hasCount(20)) console.log ("After Team Name: ", Token.join( this.read(20) ) );
-      
+      while (this.hasCount(2) && this.is(TokenType.NUMBER, ")")) {
+        let index = this.read().toString(); this.next();
+        
+        this.expect(")");
+
+        let member: Member = {
+          index,
+          name: undefined
+        };
+        team.members.push(member);
+
+        let nameStart = this.offset;
+
+        while (true) {
+          if (!this.hasNext) return;
+
+          if (this.is(TokenType.NUMBER)) {
+            if (this.hasCount(2)) {
+              if (this.is(TokenType.NUMBER, ")")) {
+                member.name = Token.join( this.tokens.slice(nameStart, this.offset), " ");
+                this.next( this.offset - nameStart );
+
+                break;
+              } else {
+                return;
+              }
+            }
+          }
+        }
+      }
+
     }
 
     while (this.hasNext) {
@@ -191,20 +228,20 @@ export class EventParser {
     if (this.is("Relay")) {
       event.type += " " + this.read().toString(); this.next();
     }
-    
+
     if (isContinuation) {
       this.expect(")");
       // if (this.is(")")) this.next(); //closing event continuation marker
       
       //non-continuation does not include headers, no need to skip them
     } else {
-
+      event.isIndividual = !this.is("Team");
       //skip headers
       //Freestyle (but not Freestyle Relay)
-      if (event.type.endsWith("Relay")) {
-        this.expect("Team", "Relay", "Seed", "Time");
-      } else {
+      if (event.isIndividual) {
         this.expect("Name", "Year", "School", "Seed", "Time");
+      } else {
+        this.expect("Team", "Relay", "Seed", "Time");
       }
     }
 
@@ -266,7 +303,8 @@ export class EventParser {
           type: undefined,
           distance: undefined,
           gender: undefined,
-          teams: []
+          teams: [],
+          isIndividual: undefined
         };
         results.push(event);
       }
